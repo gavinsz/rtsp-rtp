@@ -27,14 +27,18 @@ class RTPStream:
         self._close()
 
     def generate(self, buf_size=2048):
+        rtp_dategram = RTPDatagram()
         while True:
             data = memoryview(self.socket.recv(buf_size))
             if data:
-                rtp_payload = RTPDatagram(data).payload
-
+                #rtp_payload = RTPDatagram(data).payload
+                rtp_payload = rtp_dategram.datagram(data)
+                '''
                 try:
                     nal_payload = NalUnit(rtp_payload).payload
                 except NalUnitError:
                     pass
 
                 yield nal_payload
+                '''
+                yield rtp_payload

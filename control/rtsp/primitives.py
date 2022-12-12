@@ -56,7 +56,7 @@ class RTSPRequest:
     def _prepare_headers(self):
         prep = str()
         for k, v in self.headers.items():
-            prep += f'{self.LINE_SPLIT}{k}: {v}'
+            prep += f'{self.LINE_SPLIT}{k}:{v}'
 
         return prep
 

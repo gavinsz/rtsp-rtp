@@ -1,6 +1,7 @@
 import re
 import socket
-
+import logging
+import time
 from urllib.parse import urlparse
 
 from .auth import BasicAuth, DigestAuth
@@ -43,10 +44,10 @@ class RTSPClient:
 
     @staticmethod
     def _parse_trackid(response):
-        regex = r'a=control:(.*)/(?P<trackid>\w+=\d+)'
-        match = re.search(regex, response.body, re.S)
-
-        return match.group('trackid')
+        #regex = r'a=control:(.*)/(?P<track>\w+=\d+)'
+        #match = re.search(regex, response.body, re.S)
+        #return match.group('trackid')
+        return 'track0'
 
     @staticmethod
     def _parse_digest_auth_header(header):
@@ -102,7 +103,7 @@ class RTSPClient:
         if self._session:
             headers['Session'] = self._session
 
-        headers['Cseq'] = self._next_cseq()
+        headers['CSeq'] = self._next_cseq()
 
         return headers
 
@@ -153,6 +154,7 @@ class RTSPClient:
             try:
                 self._socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
                 self._socket.connect((self.ip, self.port))
+                #self._connected()
             except Exception as e:
                 raise RTSPClientError(
                     f'Failed to connect to {self.ip}. {e}')
@@ -171,7 +173,10 @@ class RTSPClient:
     def describe(self):
         response = self._request(
             method='describe',
-            url=self.safe_url)
+            url=self.safe_url,
+            headers={
+                'Accept': 'application/sdp'
+            })
 
         if response.status != 200:
             raise RTSPClientError(
@@ -181,7 +186,6 @@ class RTSPClient:
 
     def setup(self, rtp_port):
         trackid = self._parse_trackid(self.describe())
-
         response = self._request(
             method='setup',
             url=f'{self.url}/{trackid}',
@@ -189,6 +193,7 @@ class RTSPClient:
                 'Transport': f'RTP/AVP/UDP;unicast;client_port={rtp_port}-{rtp_port}'
             })
 
+        self._session =  response.headers['Session']
         if response.status != 200:
             raise RTSPClientError(
                 f'Failed to setup stream for {self.url}')
@@ -196,11 +201,15 @@ class RTSPClient:
         return response
 
     def play(self, npt="0.000-"):
+        now = time.time();
+        sec = int(now)
+        usec = (int)((now - sec) * 1000000)
         response = self._request(
             method='play',
             url=self.safe_url,
             headers={
-                'Range': f'npt="{npt}"'
+                'nRange': f'npt="{npt}"',
+                'Timestamp': f'{sec}-{usec}'
             })
 
         if response.status != 200:
